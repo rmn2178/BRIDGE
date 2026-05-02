@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import time
 from typing import Dict, Optional, Tuple
@@ -12,6 +11,7 @@ from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import structlog
 
+import common.settings as _settings_module
 from common.settings import settings
 from common.validation import validate_fhir_base_url, validate_optional_id, validate_patient_id
 
@@ -79,6 +79,26 @@ async def get_user_identity(request: Request) -> str:
 
     subject = payload.get("sub") or payload.get("client_id") or "unknown"
     return str(subject)
+
+
+def validate_smart_scopes(access_token: str) -> None:
+    """Validate SMART-on-FHIR scopes when SMART_REQUIRED_SCOPES is configured."""
+    required = _settings_module.settings.smart_required_scopes
+    if not required or not access_token:
+        return
+    try:
+        # Decode without signature verification — scope check only; sig verified upstream by IdP
+        payload = jwt.decode(access_token, options={"verify_signature": False})
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid SMART token")
+    raw_scope = payload.get("scope", "")
+    granted = set(raw_scope.split()) if isinstance(raw_scope, str) else set()
+    missing = [s for s in required if s not in granted]
+    if missing:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Missing SMART scopes: {', '.join(missing)}",
+        )
 
 
 def enforce_rate_limit(request: Request, patient_id: str) -> None:

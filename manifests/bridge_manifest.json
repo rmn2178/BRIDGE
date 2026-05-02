@@ -1,24 +1,45 @@
 {
   "name": "bridge-discharge-coordinator",
-  "description": "Generative discharge coordination using Sentinel risk intelligence.",
+  "display_name": "BRIDGE Discharge Coordinator",
+  "description": "Multi-agent discharge coordination system. Orchestrates SENTINEL risk intelligence via A2A to generate care plans, PCP handoff letters, and CMS documentation gap audits — all with SHARP context propagation and FHIR citations.",
   "version": "1.0.0",
   "protocol": "mcp",
-  "endpoint": "https://your-bridge-url.com/mcp",
+  "jsonrpc": "2.0",
+  "endpoint": "${BRIDGE_URL}/mcp",
+  "health_check": "${BRIDGE_URL}/health",
+  "stream_endpoint": "${BRIDGE_URL}/mcp/stream/{tool_name}",
+  "auth_schemes": [
+    {"type": "bearer", "description": "SMART-on-FHIR OAuth 2.0 bearer token via x-sharp-access-token header"},
+    {"type": "api_key", "header": "x-api-key"}
+  ],
+  "sharp_enabled": true,
+  "sharp_headers": [
+    "x-sharp-patient-id",
+    "x-sharp-fhir-base-url",
+    "x-sharp-access-token",
+    "x-sharp-encounter-id",
+    "x-sharp-practitioner-id"
+  ],
+  "capabilities": ["fhir_r4", "a2a_orchestration", "care_plan_generation", "cms_gap_audit", "pcp_handoff", "sse_streaming", "audit_trail"],
+  "fhir_resources": ["Patient", "Condition", "MedicationRequest", "Observation", "Encounter", "AllergyIntolerance", "Appointment"],
   "tools": [
     {
       "name": "generate_care_plan",
-      "description": "Generate discharge care plan actions."
+      "description": "Generate prioritised discharge care plan actions (CRITICAL/HIGH/ROUTINE) from SENTINEL risk assessment.",
+      "input_schema": {"type": "object", "properties": {}, "required": []}
     },
     {
       "name": "draft_pcp_handoff",
-      "description": "Draft primary care handoff letter."
+      "description": "Draft a structured primary care handoff letter with FHIR-cited medications, pending concerns, and follow-up priorities.",
+      "input_schema": {"type": "object", "properties": {}, "required": []}
     },
     {
       "name": "audit_documentation_gaps",
-      "description": "Audit discharge documentation gaps for CMS compliance."
+      "description": "Audit discharge documentation against CMS requirements and return PASS/FAIL items with remediation guidance.",
+      "input_schema": {"type": "object", "properties": {}, "required": []}
     }
   ],
   "a2a_dependencies": ["sentinel-risk-stratifier"],
-  "sharp_enabled": true,
-  "data_usage": "synthetic_only"
+  "data_usage": "synthetic_only",
+  "compliance": ["HIPAA_audit_log", "SSRF_protected", "rate_limited", "CMS_gap_audit"]
 }

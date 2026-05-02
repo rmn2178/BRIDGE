@@ -1,23 +1,45 @@
 {
   "name": "sentinel-risk-stratifier",
-  "description": "Deterministic discharge risk stratifier using LACE+ and FHIR snapshots.",
+  "display_name": "SENTINEL Risk Stratifier",
+  "description": "Deterministic discharge risk stratifier using LACE+ scoring and live FHIR R4 snapshots. Produces a structured RiskCard with clinical drivers, medication flags, SDoH flags, and FHIR citations.",
   "version": "1.0.0",
   "protocol": "mcp",
-  "endpoint": "https://your-sentinel-url.com/mcp",
+  "jsonrpc": "2.0",
+  "endpoint": "${SENTINEL_URL}/mcp",
+  "health_check": "${SENTINEL_URL}/health",
+  "stream_endpoint": "${SENTINEL_URL}/mcp/stream/{tool_name}",
+  "auth_schemes": [
+    {"type": "bearer", "description": "SMART-on-FHIR OAuth 2.0 bearer token via x-sharp-access-token header"},
+    {"type": "api_key", "header": "x-api-key"}
+  ],
+  "sharp_enabled": true,
+  "sharp_headers": [
+    "x-sharp-patient-id",
+    "x-sharp-fhir-base-url",
+    "x-sharp-access-token",
+    "x-sharp-encounter-id",
+    "x-sharp-practitioner-id"
+  ],
+  "capabilities": ["fhir_r4", "lace_plus_scoring", "risk_stratification", "sse_streaming", "audit_trail"],
+  "fhir_resources": ["Patient", "Condition", "MedicationRequest", "Observation", "Encounter", "AllergyIntolerance", "Appointment"],
   "tools": [
     {
       "name": "fhir_discharge_snapshot",
-      "description": "Fetch patient-centered FHIR snapshot for discharge."
+      "description": "Fetch a patient-centered FHIR R4 snapshot across 7 resource types in parallel.",
+      "input_schema": {"type": "object", "properties": {}, "required": []}
     },
     {
       "name": "calculate_lace_plus",
-      "description": "Calculate deterministic LACE+ score and drivers."
+      "description": "Calculate deterministic LACE+ readmission risk score (0-19) with per-driver point breakdown.",
+      "input_schema": {"type": "object", "properties": {}, "required": []}
     },
     {
       "name": "map_risk_drivers",
-      "description": "Map clinical drivers into a structured RiskCard."
+      "description": "Map clinical drivers into a structured RiskCard with medication flags, SDoH flags, pending labs, and FHIR citations.",
+      "input_schema": {"type": "object", "properties": {}, "required": []}
     }
   ],
-  "sharp_enabled": true,
-  "data_usage": "synthetic_only"
+  "a2a_dependencies": [],
+  "data_usage": "synthetic_only",
+  "compliance": ["HIPAA_audit_log", "SSRF_protected", "rate_limited"]
 }

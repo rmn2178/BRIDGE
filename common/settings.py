@@ -18,6 +18,7 @@ class Settings:
     jwt_algorithm: str
     jwt_issuer: str | None
     jwt_audience: str | None
+    smart_required_scopes: list[str]
 
     @staticmethod
     def _split_env(name: str) -> list[str]:
@@ -36,6 +37,7 @@ settings = Settings(
     jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
     jwt_issuer=os.getenv("JWT_ISSUER"),
     jwt_audience=os.getenv("JWT_AUDIENCE"),
+    smart_required_scopes=Settings._split_env("SMART_REQUIRED_SCOPES"),
 )
 
 
@@ -52,4 +54,5 @@ def refresh_settings() -> None:
         jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
         jwt_issuer=os.getenv("JWT_ISSUER"),
         jwt_audience=os.getenv("JWT_AUDIENCE"),
+        smart_required_scopes=Settings._split_env("SMART_REQUIRED_SCOPES"),
     )
