@@ -1,0 +1,23 @@
+{
+  "name": "sentinel-risk-stratifier",
+  "description": "Deterministic discharge risk stratifier using LACE+ and FHIR snapshots.",
+  "version": "1.0.0",
+  "protocol": "mcp",
+  "endpoint": "https://your-sentinel-url.com/mcp",
+  "tools": [
+    {
+      "name": "fhir_discharge_snapshot",
+      "description": "Fetch patient-centered FHIR snapshot for discharge."
+    },
+    {
+      "name": "calculate_lace_plus",
+      "description": "Calculate deterministic LACE+ score and drivers."
+    },
+    {
+      "name": "map_risk_drivers",
+      "description": "Map clinical drivers into a structured RiskCard."
+    }
+  ],
+  "sharp_enabled": true,
+  "data_usage": "synthetic_only"
+}

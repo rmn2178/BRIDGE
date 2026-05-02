@@ -1,0 +1,24 @@
+{
+  "name": "bridge-discharge-coordinator",
+  "description": "Generative discharge coordination using Sentinel risk intelligence.",
+  "version": "1.0.0",
+  "protocol": "mcp",
+  "endpoint": "https://your-bridge-url.com/mcp",
+  "tools": [
+    {
+      "name": "generate_care_plan",
+      "description": "Generate discharge care plan actions."
+    },
+    {
+      "name": "draft_pcp_handoff",
+      "description": "Draft primary care handoff letter."
+    },
+    {
+      "name": "audit_documentation_gaps",
+      "description": "Audit discharge documentation gaps for CMS compliance."
+    }
+  ],
+  "a2a_dependencies": ["sentinel-risk-stratifier"],
+  "sharp_enabled": true,
+  "data_usage": "synthetic_only"
+}

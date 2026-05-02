@@ -1,0 +1,602 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:patient-bridge-demo-001",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "bridge-demo-001",
+        "name": [
+          {
+            "use": "official",
+            "family": "Bridge",
+            "given": ["Demo"]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1953-01-15",
+        "communication": [
+          {
+            "language": {
+              "coding": [
+                {
+                  "system": "urn:ietf:bcp:47",
+                  "code": "en",
+                  "display": "English"
+                }
+              ],
+              "text": "English"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/bridge-demo-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-chf-001",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "chf-001",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "I50.9",
+              "display": "Heart failure, unspecified"
+            }
+          ],
+          "text": "CHF"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "onsetDateTime": "2023-06-01"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/chf-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-dm-001",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "dm-001",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "E11.9",
+              "display": "Type 2 diabetes mellitus without complications"
+            }
+          ],
+          "text": "Type 2 DM"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/dm-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-ckd-001",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "ckd-001",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "N18.3",
+              "display": "Chronic kidney disease, stage 3"
+            }
+          ],
+          "text": "CKD Stage 3"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/ckd-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medreq-warfarin-001",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "warfarin-001",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "855288",
+              "display": "Warfarin 5 MG Oral Tablet"
+            }
+          ],
+          "text": "Warfarin"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "authoredOn": "2026-04-30",
+        "dosageInstruction": [
+          {
+            "text": "5 mg by mouth daily"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/warfarin-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medreq-furosemide-001",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "furosemide-001",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "617320",
+              "display": "Furosemide 40 MG Oral Tablet"
+            }
+          ],
+          "text": "Furosemide"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "authoredOn": "2026-04-30",
+        "dosageInstruction": [
+          {
+            "text": "40 mg by mouth twice daily"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/furosemide-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medreq-metformin-001",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "metformin-001",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "860975",
+              "display": "Metformin 500 MG Oral Tablet"
+            }
+          ],
+          "text": "Metformin"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "authoredOn": "2026-04-30",
+        "dosageInstruction": [
+          {
+            "text": "500 mg by mouth twice daily"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/metformin-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medreq-lisinopril-001",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "lisinopril-001",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "860975",
+              "display": "Lisinopril 10 MG Oral Tablet"
+            }
+          ],
+          "text": "Lisinopril"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "authoredOn": "2026-04-30",
+        "dosageInstruction": [
+          {
+            "text": "10 mg by mouth daily"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/lisinopril-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medreq-metoprolol-001",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "metoprolol-001",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "860975",
+              "display": "Metoprolol 50 MG Oral Tablet"
+            }
+          ],
+          "text": "Metoprolol"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "authoredOn": "2026-04-30",
+        "dosageInstruction": [
+          {
+            "text": "50 mg by mouth twice daily"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/metoprolol-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medreq-atorvastatin-001",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "atorvastatin-001",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "83367",
+              "display": "Atorvastatin 40 MG Oral Tablet"
+            }
+          ],
+          "text": "Atorvastatin"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "authoredOn": "2026-04-30",
+        "dosageInstruction": [
+          {
+            "text": "40 mg by mouth daily"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/atorvastatin-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medreq-aspirin-001",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "aspirin-001",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "1191",
+              "display": "Aspirin 81 MG Oral Tablet"
+            }
+          ],
+          "text": "Aspirin"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "authoredOn": "2026-04-30",
+        "dosageInstruction": [
+          {
+            "text": "81 mg by mouth daily"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/aspirin-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:obs-bmp-pending",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "bmp-pending",
+        "status": "registered",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "24323-8",
+              "display": "Basic metabolic panel"
+            }
+          ],
+          "text": "Basic Metabolic Panel"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "effectiveDateTime": "2026-04-30"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/bmp-pending"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:obs-weight-gain",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "weight-gain",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "29463-7",
+              "display": "Body weight"
+            }
+          ],
+          "text": "Body weight"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "effectiveDateTime": "2026-04-28",
+        "valueQuantity": {
+          "value": 3,
+          "unit": "kg",
+          "system": "http://unitsofmeasure.org",
+          "code": "kg"
+        },
+        "note": [
+          {
+            "text": "3 kg gain during admission"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/weight-gain"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:obs-sdoh-alone",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "sdoh-alone",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "Z60.2",
+              "display": "Living alone (self-reported)"
+            }
+          ],
+          "text": "Living alone (self-reported)"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "effectiveDateTime": "2026-04-29",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "Z60.2",
+              "display": "Living alone (self-reported)"
+            }
+          ],
+          "text": "Living alone (self-reported)"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/sdoh-alone"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:obs-sdoh-housing",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "sdoh-housing",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "Z59.0",
+              "display": "Homelessness risk (screening)"
+            }
+          ],
+          "text": "Homelessness risk (screening)"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "effectiveDateTime": "2026-04-29",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "Z59.0",
+              "display": "Homelessness risk (screening)"
+            }
+          ],
+          "text": "Homelessness risk (screening)"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/sdoh-housing"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:enc-index-001",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "index-001",
+        "status": "in-progress",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "IMP",
+          "display": "inpatient encounter"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "period": {
+          "start": "2026-04-25",
+          "end": "2026-04-30"
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "code": "I50.9",
+                "display": "Heart failure, unspecified"
+              }
+            ],
+            "text": "CHF exacerbation"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/index-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:enc-ed-1",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "ed-1",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "EMER",
+          "display": "emergency"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "period": {
+          "start": "2026-02-15"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/ed-1"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:enc-ed-2",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "ed-2",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "EMER",
+          "display": "emergency"
+        },
+        "subject": {
+          "reference": "Patient/bridge-demo-001"
+        },
+        "period": {
+          "start": "2026-03-22"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/ed-2"
+      }
+    }
+  ]
+}
