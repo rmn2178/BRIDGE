@@ -19,6 +19,9 @@ import structlog
 
 from bridge_agent.a2a_client import request_risk_assessment
 from bridge_agent.tools import care_plan, gap_audit, pcp_handoff
+from bridge_agent.tools.care_plan_ai import generate_care_plan_ai
+from bridge_agent.tools.handoff_ai import draft_pcp_handoff_ai
+from bridge_agent.tools.gap_ai import audit_documentation_gaps_ai
 from common.logging import configure_logging, correlation_middleware
 from sentinel.tools.fhir_snapshot import configure_fhir_client, build_patient_bundle
 from shared.cache import TTLCache, RedisCache, create_redis_client
@@ -57,6 +60,15 @@ async def lifespan(app: FastAPI):
     client = httpx.AsyncClient(limits=limits, timeout=httpx.Timeout(20.0))
     redis_client = await create_redis_client()
     configure_fhir_client(client, RedisCache(redis_client))
+    llm_client = None
+    if os.getenv("USE_GENAI", "true").lower() == "true":
+        try:
+            from shared.llm import LLMClient
+            llm_client = LLMClient()
+            _logger.info("llm_client_initialized", provider=os.getenv("LLM_PROVIDER", "openai"))
+        except Exception as exc:
+            _logger.warning("llm_client_init_failed", error=str(exc))
+    app.state.llm_client = llm_client
     yield
     await client.aclose()
     if redis_client:
@@ -161,6 +173,7 @@ async def agent_card() -> dict:
         "capabilities": [
             "fhir_r4", "a2a_orchestration", "care_plan_generation",
             "cms_gap_audit", "pcp_handoff", "sse_streaming", "audit_trail",
+            "genai_care_plans", "genai_handoffs", "ai_gap_prioritization",
         ],
         "fhir_resources": [
             "Patient", "Condition", "MedicationRequest", "Observation",
@@ -225,18 +238,20 @@ async def call_tool(request: Request, call: MCPCall) -> dict:
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"A2A handshake with SENTINEL failed: {exc}")
 
+    llm = getattr(request.app.state, "llm_client", None)
+
     if tool_name == "generate_care_plan":
-        plan = care_plan.generate_care_plan(risk_card)
+        plan = await generate_care_plan_ai(risk_card, llm)
         return _rpc_result(plan.model_dump_json(), rpc_id)
 
     if tool_name == "draft_pcp_handoff":
         bundle = await build_patient_bundle(sharp)
-        handoff = pcp_handoff.draft_pcp_handoff(risk_card, bundle)
+        handoff = await draft_pcp_handoff_ai(risk_card, bundle, llm)
         return _rpc_result(handoff.model_dump_json(), rpc_id)
 
     if tool_name == "audit_documentation_gaps":
         bundle = await build_patient_bundle(sharp)
-        audit = gap_audit.audit_documentation_gaps(risk_card, bundle)
+        audit = await audit_documentation_gaps_ai(risk_card, bundle, llm)
         return _rpc_result(audit.model_dump_json(), rpc_id)
 
     if rpc_id is not None:
@@ -287,14 +302,15 @@ async def stream_tool(tool_name: str, request: Request) -> StreamingResponse:
 
         yield _sse("progress", json.dumps({"step": tool_name, "status": "started"}))
 
+        llm = getattr(request.app.state, "llm_client", None)
         if tool_name == "generate_care_plan":
-            result = care_plan.generate_care_plan(risk_card)
+            result = await generate_care_plan_ai(risk_card, llm)
             yield _sse("result", result.model_dump_json())
         elif tool_name == "draft_pcp_handoff" and bundle:
-            result = pcp_handoff.draft_pcp_handoff(risk_card, bundle)
+            result = await draft_pcp_handoff_ai(risk_card, bundle, llm)
             yield _sse("result", result.model_dump_json())
         elif tool_name == "audit_documentation_gaps" and bundle:
-            result = gap_audit.audit_documentation_gaps(risk_card, bundle)
+            result = await audit_documentation_gaps_ai(risk_card, bundle, llm)
             yield _sse("result", result.model_dump_json())
         else:
             yield _sse("error", json.dumps({"detail": f"Unknown tool: {tool_name}"}))

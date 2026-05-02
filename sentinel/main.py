@@ -45,6 +45,11 @@ _TOOLS = [
         "description": "Map clinical drivers into a structured RiskCard with FHIR citations.",
         "input_schema": {"type": "object", "properties": {}, "required": []},
     },
+    {
+        "name": "generate_risk_narrative",
+        "description": "Generate a plain-language ~100-word readmission risk summary for clinicians and care coordinators.",
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
 ]
 
 
@@ -58,6 +63,15 @@ async def lifespan(app: FastAPI):
     client = httpx.AsyncClient(limits=limits, timeout=httpx.Timeout(20.0))
     redis_client = await create_redis_client()
     configure_fhir_client(client, RedisCache(redis_client))
+    llm_client = None
+    if os.getenv("USE_GENAI", "true").lower() == "true":
+        try:
+            from shared.llm import LLMClient
+            llm_client = LLMClient()
+            _logger.info("llm_client_initialized", provider=os.getenv("LLM_PROVIDER", "openai"))
+        except Exception as exc:
+            _logger.warning("llm_client_init_failed", error=str(exc))
+    app.state.llm_client = llm_client
     yield
     await client.aclose()
     if redis_client:
@@ -160,7 +174,7 @@ async def agent_card() -> dict:
         ],
         "capabilities": [
             "fhir_r4", "lace_plus_scoring", "risk_stratification",
-            "sse_streaming", "audit_trail",
+            "sse_streaming", "audit_trail", "genai_risk_narrative",
         ],
         "fhir_resources": [
             "Patient", "Condition", "MedicationRequest", "Observation",
@@ -238,6 +252,14 @@ async def call_tool(request: Request, call: MCPCall) -> dict:
         risk_card = map_risk_drivers(bundle)
         risk_cache_key = f"risk:{sharp.fhir_base_url}:{sharp.patient_id}"
         _risk_cache.set(risk_cache_key, risk_card)
+        return _rpc_result(risk_card.model_dump_json(), rpc_id)
+
+    if tool_name == "generate_risk_narrative":
+        from sentinel.tools.risk_narrative import generate_risk_narrative
+        risk_card = map_risk_drivers(bundle)
+        llm = getattr(request.app.state, "llm_client", None)
+        narrative = await generate_risk_narrative(risk_card, llm)
+        risk_card = risk_card.model_copy(update={"ai_risk_narrative": narrative})
         return _rpc_result(risk_card.model_dump_json(), rpc_id)
 
     if rpc_id is not None:

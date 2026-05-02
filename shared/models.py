@@ -73,6 +73,7 @@ class RiskCard(BaseModel):
     pending_labs: List[str]
     missing_follow_ups: List[str]
     fhir_citations: List[str]
+    ai_risk_narrative: Optional[str] = None
 
     model_config = {
         "json_schema_extra": {
@@ -163,6 +164,9 @@ class GapAuditItem(BaseModel):
     status: Literal["PASS", "FAIL"]
     fhir_evidence: Optional[str] = None
     remediation: Optional[str] = None
+    ai_severity: Optional[int] = None
+    ai_clinical_context: Optional[str] = None
+    ai_interdependencies: List[str] = []
 
 
 class GapAuditOutput(BaseModel):
