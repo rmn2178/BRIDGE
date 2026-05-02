@@ -6,13 +6,9 @@ from typing import List
 
 from shared.models import RiskCard, RiskDriver
 from sentinel.tools.fhir_snapshot import FHIRBundle
+from common.normalize import normalize_resource
+from common.constants import HIGH_RISK_MEDS, SDOH_PREFIXES
 from sentinel.tools.lace_plus import calculate_lace_plus
-
-
-def _normalize_resource(item: dict) -> dict:
-    if "resource" in item and isinstance(item.get("resource"), dict):
-        return item["resource"]
-    return item
 
 
 def _lower_text(value: str | None) -> str:
@@ -39,9 +35,7 @@ def _find_sdoh_code(resource: dict) -> tuple[str, str] | None:
             continue
         code_value = item.get("code")
         display = item.get("display") or ""
-        if isinstance(code_value, str) and code_value.startswith(
-            ("Z59", "Z60", "Z62", "Z63", "Z64", "Z65")
-        ):
+        if isinstance(code_value, str) and code_value.startswith(SDOH_PREFIXES):
             return code_value, display
     value_code = resource.get("valueCodeableConcept", {})
     value_coding = (
@@ -52,9 +46,7 @@ def _find_sdoh_code(resource: dict) -> tuple[str, str] | None:
             continue
         code_value = item.get("code")
         display = item.get("display") or ""
-        if isinstance(code_value, str) and code_value.startswith(
-            ("Z59", "Z60", "Z62", "Z63", "Z64", "Z65")
-        ):
+        if isinstance(code_value, str) and code_value.startswith(SDOH_PREFIXES):
             return code_value, display
     return None
 
@@ -65,29 +57,10 @@ def _normalize_sdoh_display(code_value: str, display: str) -> str:
     return display
 
 
-def map_risk_drivers(bundle: FHIRBundle) -> RiskCard:
-    """Generate a complete RiskCard from the FHIR bundle."""
-
-    lace = calculate_lace_plus(bundle)
-    primary_drivers = [RiskDriver(**driver) for driver in lace["primary_drivers"]]
-
-    medication_flags: List[str] = []
-    high_risk_meds = [
-        "warfarin",
-        "insulin",
-        "opioid",
-        "morphine",
-        "fentanyl",
-        "oxycodone",
-        "furosemide",
-        "digoxin",
-        "lithium",
-        "methotrexate",
-        "heparin",
-    ]
-
-    for med in bundle.medications:
-        resource = _normalize_resource(med)
+def _extract_medication_flags(medications: List[dict]) -> List[str]:
+    flags: List[str] = []
+    for med in medications:
+        resource = normalize_resource(med)
         if resource.get("status") != "active":
             continue
         med_text = _lower_text(_find_medication_text(resource))
@@ -101,13 +74,16 @@ def map_risk_drivers(bundle: FHIRBundle) -> RiskCard:
             if isinstance(item, dict)
         ]
         haystack = " ".join([med_text] + coding_texts)
-        for flag in high_risk_meds:
-            if flag in haystack and flag not in medication_flags:
-                medication_flags.append(flag)
+        for flag in HIGH_RISK_MEDS:
+            if flag in haystack and flag not in flags:
+                flags.append(flag)
+    return flags
 
-    sdoh_flags: List[str] = []
-    for obs in bundle.observations:
-        resource = _normalize_resource(obs)
+
+def _extract_sdoh_flags(observations: List[dict]) -> List[str]:
+    flags: List[str] = []
+    for obs in observations:
+        resource = normalize_resource(obs)
         sdoh = _find_sdoh_code(resource)
         if not sdoh:
             continue
@@ -116,12 +92,15 @@ def map_risk_drivers(bundle: FHIRBundle) -> RiskCard:
         label = (
             f"{code_value}: {normalized_display}" if normalized_display else code_value
         )
-        if label not in sdoh_flags:
-            sdoh_flags.append(label)
+        if label not in flags:
+            flags.append(label)
+    return flags
 
-    pending_labs: List[str] = []
-    for obs in bundle.observations:
-        resource = _normalize_resource(obs)
+
+def _extract_pending_labs(observations: List[dict]) -> List[str]:
+    pending: List[str] = []
+    for obs in observations:
+        resource = normalize_resource(obs)
         status = resource.get("status")
         if status not in ["registered", "preliminary"]:
             continue
@@ -134,33 +113,46 @@ def map_risk_drivers(bundle: FHIRBundle) -> RiskCard:
                 if coding and isinstance(coding[0], dict):
                     code_text = coding[0].get("display", "")
         effective = resource.get("effectiveDateTime", "")
-        pending_labs.append(f"{code_text} pending from {effective}".strip())
+        pending.append(f"{code_text} pending from {effective}".strip())
+    return pending
 
-    missing_follow_ups: List[str] = []
-    if not bundle.appointments:
-        missing_follow_ups.append("No follow-up appointments scheduled")
-    else:
-        has_cardiology = False
-        for appt in bundle.appointments:
-            if "cardiology" in _lower_text(str(appt)):
-                has_cardiology = True
-                break
-        if not has_cardiology:
-            missing_follow_ups.append("No cardiology appointment within 7 days")
 
+def _extract_missing_followups(appointments: List[dict]) -> List[str]:
+    if not appointments:
+        return ["No follow-up appointments scheduled"]
+    for appt in appointments:
+        if "cardiology" in _lower_text(str(appt)):
+            return []
+    return ["No cardiology appointment within 7 days"]
+
+
+def _extract_citations(bundle: FHIRBundle) -> List[str]:
     citations: List[str] = []
     for encounter in bundle.encounters:
-        resource = _normalize_resource(encounter)
+        resource = normalize_resource(encounter)
         if resource.get("id"):
             citations.append(f"Encounter/{resource['id']}")
     for med in bundle.medications:
-        resource = _normalize_resource(med)
+        resource = normalize_resource(med)
         if resource.get("id"):
             citations.append(f"MedicationRequest/{resource['id']}")
     for obs in bundle.observations:
-        resource = _normalize_resource(obs)
+        resource = normalize_resource(obs)
         if resource.get("id"):
             citations.append(f"Observation/{resource['id']}")
+    return citations
+
+
+def map_risk_drivers(bundle: FHIRBundle) -> RiskCard:
+    """Generate a complete RiskCard from the FHIR bundle."""
+
+    lace = calculate_lace_plus(bundle)
+    primary_drivers = [RiskDriver(**driver) for driver in lace["primary_drivers"]]
+    medication_flags = _extract_medication_flags(bundle.medications)
+    sdoh_flags = _extract_sdoh_flags(bundle.observations)
+    pending_labs = _extract_pending_labs(bundle.observations)
+    missing_follow_ups = _extract_missing_followups(bundle.appointments)
+    citations = _extract_citations(bundle)
 
     return RiskCard(
         patient_id=bundle.patient.get("id", ""),

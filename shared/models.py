@@ -5,7 +5,13 @@ from __future__ import annotations
 from enum import Enum
 from typing import List, Optional, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from common.validation import (
+    validate_fhir_base_url,
+    validate_optional_id,
+    validate_patient_id,
+)
 
 
 class RiskLevel(str, Enum):
@@ -25,6 +31,26 @@ class SHARPContext(BaseModel):
     access_token: str
     encounter_id: Optional[str] = None
     practitioner_id: Optional[str] = None
+
+    @field_validator("patient_id")
+    @classmethod
+    def _validate_patient_id(cls, value: str) -> str:
+        return validate_patient_id(value)
+
+    @field_validator("fhir_base_url")
+    @classmethod
+    def _validate_fhir_base_url(cls, value: str) -> str:
+        return validate_fhir_base_url(value)
+
+    @field_validator("encounter_id")
+    @classmethod
+    def _validate_encounter_id(cls, value: Optional[str]) -> Optional[str]:
+        return validate_optional_id(value, "encounter_id")
+
+    @field_validator("practitioner_id")
+    @classmethod
+    def _validate_practitioner_id(cls, value: Optional[str]) -> Optional[str]:
+        return validate_optional_id(value, "practitioner_id")
 
 
 class RiskDriver(BaseModel):

@@ -6,12 +6,7 @@ from typing import List
 
 from shared.models import PCPHandoff, RiskCard
 from sentinel.tools.fhir_snapshot import FHIRBundle
-
-
-def _normalize_resource(item: dict) -> dict:
-    if "resource" in item and isinstance(item.get("resource"), dict):
-        return item["resource"]
-    return item
+from common.normalize import normalize_resource
 
 
 def _medication_name(resource: dict) -> str:
@@ -34,7 +29,7 @@ def _dose_text(resource: dict) -> str:
 
 def _hospitalization_reason(bundle: FHIRBundle) -> str:
     for encounter in bundle.encounters:
-        resource = _normalize_resource(encounter)
+        resource = normalize_resource(encounter)
         enc_class = resource.get("class")
         if not isinstance(enc_class, dict):
             enc_class = {}
@@ -56,7 +51,7 @@ def draft_pcp_handoff(risk_card: RiskCard, bundle: FHIRBundle) -> PCPHandoff:
 
     medication_changes: List[str] = []
     for med in bundle.medications:
-        resource = _normalize_resource(med)
+        resource = normalize_resource(med)
         if resource.get("status") != "active":
             continue
         name = _medication_name(resource)

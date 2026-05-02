@@ -8,6 +8,8 @@ import sys
 MODULES = [
     "shared.models",
     "shared.sharp",
+    "shared.security",
+    "shared.cache",
     "sentinel.tools.fhir_snapshot",
     "sentinel.tools.lace_plus",
     "sentinel.tools.risk_mapper",

@@ -5,9 +5,12 @@ from __future__ import annotations
 import os
 
 import httpx
+import structlog
 from fastapi import HTTPException
 
 from shared.models import RiskCard, SHARPContext
+
+_logger = structlog.get_logger("bridge.a2a")
 
 SENTINEL_AGENT_URL = os.getenv("SENTINEL_URL", "http://localhost:8001")
 MARKETPLACE_REGISTRY = os.getenv(
@@ -35,8 +38,10 @@ async def discover_sentinel() -> str:
             payload = response.json()
             endpoint_url = payload.get("endpoint_url")
             if isinstance(endpoint_url, str) and endpoint_url.strip():
+                _logger.info("discovered_sentinel", endpoint_url=endpoint_url)
                 return endpoint_url.strip()
     except Exception:
+        _logger.warning("sentinel_discovery_failed", fallback=_sentinel_fallback_url())
         return _sentinel_fallback_url()
     return _sentinel_fallback_url()
 
@@ -60,6 +65,7 @@ async def request_risk_assessment(sharp: SHARPContext) -> RiskCard:
         response = await client.post(f"{sentinel_url}/mcp/call", json=payload, headers=headers)
 
     if response.status_code // 100 != 2:
+        _logger.error("sentinel_error", status_code=response.status_code)
         raise HTTPException(
             status_code=503,
             detail=f"SENTINEL error: {response.status_code}",
@@ -70,6 +76,7 @@ async def request_risk_assessment(sharp: SHARPContext) -> RiskCard:
         text = data["content"][0]["text"]
         return RiskCard.model_validate_json(text)
     except Exception as exc:
+        _logger.error("sentinel_parse_failed", error=str(exc))
         raise HTTPException(
             status_code=503,
             detail=f"Failed to parse SENTINEL response: {exc}",

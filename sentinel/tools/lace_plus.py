@@ -6,7 +6,9 @@ from datetime import datetime, timezone
 from typing import List
 
 from shared.models import RiskDriver, RiskLevel
+from common.constants import RISK_THRESHOLDS
 from sentinel.tools.fhir_snapshot import FHIRBundle
+from common.normalize import normalize_resource
 
 
 def _safe_parse_datetime(value: str | None) -> datetime | None:
@@ -20,16 +22,10 @@ def _safe_parse_datetime(value: str | None) -> datetime | None:
         return None
 
 
-def _normalize_resource(item: dict) -> dict:
-    if "resource" in item and isinstance(item.get("resource"), dict):
-        return item["resource"]
-    return item
-
-
 def _length_of_stay_days(encounters: List[dict]) -> int:
     inpatient = None
     for encounter in encounters:
-        resource = _normalize_resource(encounter)
+        resource = normalize_resource(encounter)
         class_code = (
             resource.get("class", {}).get("code")
             if isinstance(resource.get("class"), dict)
@@ -39,7 +35,7 @@ def _length_of_stay_days(encounters: List[dict]) -> int:
             inpatient = resource
             break
     if inpatient is None and encounters:
-        inpatient = _normalize_resource(encounters[0])
+        inpatient = normalize_resource(encounters[0])
 
     if not inpatient:
         return 6
@@ -71,7 +67,7 @@ def _score_los(days: int) -> int:
 
 def _has_active_chf(conditions: List[dict]) -> bool:
     for condition in conditions:
-        resource = _normalize_resource(condition)
+        resource = normalize_resource(condition)
         clinical_status = resource.get("clinicalStatus", {})
         status_code = None
         if isinstance(clinical_status, dict):
@@ -98,7 +94,7 @@ def _has_active_chf(conditions: List[dict]) -> bool:
 def _count_active_conditions(conditions: List[dict]) -> int:
     count = 0
     for condition in conditions:
-        resource = _normalize_resource(condition)
+        resource = normalize_resource(condition)
         clinical_status = resource.get("clinicalStatus", {})
         status_code = None
         if isinstance(clinical_status, dict):
@@ -125,7 +121,7 @@ def _score_comorbidity(count: int) -> int:
 def _count_ed_visits(encounters: List[dict]) -> int:
     count = 0
     for encounter in encounters:
-        resource = _normalize_resource(encounter)
+        resource = normalize_resource(encounter)
         class_code = (
             resource.get("class", {}).get("code")
             if isinstance(resource.get("class"), dict)
@@ -164,12 +160,9 @@ def _patient_age_years(patient: dict) -> int | None:
 
 
 def _risk_level(score: int) -> RiskLevel:
-    if score <= 4:
-        return RiskLevel.LOW
-    if score <= 9:
-        return RiskLevel.MODERATE
-    if score <= 14:
-        return RiskLevel.HIGH
+    for threshold, label in RISK_THRESHOLDS:
+        if score <= threshold:
+            return RiskLevel(label)
     return RiskLevel.VERY_HIGH
 
 
@@ -208,19 +201,19 @@ def calculate_lace_plus(bundle: FHIRBundle) -> dict:
             criterion=f"Comorbidities: {comorbidity_count} active conditions",
             points=comorbidity_score,
             fhir_evidence=[
-                f"Condition/{_normalize_resource(c).get('id')}"
+                f"Condition/{normalize_resource(c).get('id')}"
                 for c in bundle.conditions
-                if _normalize_resource(c).get("id")
+                if normalize_resource(c).get("id")
             ],
         ),
         RiskDriver(
             criterion=f"ED visits in last 6 months: {ed_visits}",
             points=ed_score,
             fhir_evidence=[
-                f"Encounter/{_normalize_resource(e).get('id')}"
+                f"Encounter/{normalize_resource(e).get('id')}"
                 for e in bundle.encounters
-                if _normalize_resource(e).get("id")
-                and _normalize_resource(e).get("class", {}).get("code") == "EMER"
+                if normalize_resource(e).get("id")
+                and normalize_resource(e).get("class", {}).get("code") == "EMER"
             ],
         ),
         RiskDriver(

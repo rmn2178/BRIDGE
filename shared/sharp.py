@@ -1,6 +1,8 @@
 """Utilities for parsing SHARP context headers from FastAPI requests."""
 
-from fastapi import Request
+from fastapi import HTTPException, Request
+
+from common.errors import ValidationError as BridgeValidationError
 
 from shared.models import SHARPContext
 
@@ -16,10 +18,13 @@ def parse_sharp_context(request: Request) -> SHARPContext:
     encounter_id = request.headers.get("x-sharp-encounter-id")
     practitioner_id = request.headers.get("x-sharp-practitioner-id")
 
-    return SHARPContext(
-        patient_id=patient_id,
-        fhir_base_url=fhir_base_url,
-        access_token=access_token,
-        encounter_id=encounter_id,
-        practitioner_id=practitioner_id,
-    )
+    try:
+        return SHARPContext(
+            patient_id=patient_id,
+            fhir_base_url=fhir_base_url,
+            access_token=access_token,
+            encounter_id=encounter_id,
+            practitioner_id=practitioner_id,
+        )
+    except (ValueError, BridgeValidationError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
