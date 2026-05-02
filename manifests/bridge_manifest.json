@@ -20,7 +20,7 @@
     "x-sharp-encounter-id",
     "x-sharp-practitioner-id"
   ],
-  "capabilities": ["fhir_r4", "a2a_orchestration", "care_plan_generation", "cms_gap_audit", "pcp_handoff", "sse_streaming", "audit_trail"],
+  "capabilities": ["fhir_r4", "a2a_orchestration", "care_plan_generation", "cms_gap_audit", "pcp_handoff", "sse_streaming", "audit_trail", "multi_agent_debate", "clinical_explainability", "confidence_scoring"],
   "fhir_resources": ["Patient", "Condition", "MedicationRequest", "Observation", "Encounter", "AllergyIntolerance", "Appointment"],
   "tools": [
     {
@@ -37,9 +37,14 @@
       "name": "audit_documentation_gaps",
       "description": "Audit discharge documentation against CMS requirements and return PASS/FAIL items with remediation guidance.",
       "input_schema": {"type": "object", "properties": {}, "required": []}
+    },
+    {
+      "name": "debate_discharge",
+      "description": "Run multi-agent clinical debate on discharge decision. Three specialist agents (medication_safety, sdoh, continuity) review the patient in parallel and vote on discharge readiness with full explainability.",
+      "input_schema": {"type": "object", "properties": {}, "required": []}
     }
   ],
   "a2a_dependencies": ["sentinel-risk-stratifier"],
   "data_usage": "synthetic_only",
-  "compliance": ["HIPAA_audit_log", "SSRF_protected", "rate_limited", "CMS_gap_audit"]
+  "compliance": ["HIPAA_audit_log", "SSRF_protected", "rate_limited", "CMS_gap_audit", "no_real_PHI"]
 }

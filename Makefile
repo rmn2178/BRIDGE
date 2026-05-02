@@ -12,7 +12,3 @@ test:
 
 bandit:
 	.\.venv\Scripts\python.exe -m bandit -c pyproject.toml -r .
-
-reports:
-	.\.venv\Scripts\python.exe -m radon cc -s -a . > docs/reports/complexity.txt
-	.\.venv\Scripts\python.exe -m mypy --html-report docs/reports/mypy .

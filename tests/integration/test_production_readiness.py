@@ -219,6 +219,36 @@ class TestSseStreamingBridge:
         response = bridge_client.get("/mcp/stream/audit_documentation_gaps")
         assert "event: result" in response.text
 
+    def test_stream_debate_returns_200(self, bridge_client: TestClient, monkeypatch, golden_patient_bundle) -> None:
+        async def _mock_bundle(_): return golden_patient_bundle
+        monkeypatch.setattr(bridge_main, "build_patient_bundle", _mock_bundle)
+        response = bridge_client.get("/mcp/stream/debate_discharge")
+        assert response.status_code == 200
+
+    def test_stream_debate_has_agent_votes(self, bridge_client: TestClient, monkeypatch, golden_patient_bundle) -> None:
+        async def _mock_bundle(_): return golden_patient_bundle
+        monkeypatch.setattr(bridge_main, "build_patient_bundle", _mock_bundle)
+        response = bridge_client.get("/mcp/stream/debate_discharge")
+        assert response.text.count("event: agent_vote") == 3
+
+    def test_stream_debate_has_consensus(self, bridge_client: TestClient, monkeypatch, golden_patient_bundle) -> None:
+        async def _mock_bundle(_): return golden_patient_bundle
+        monkeypatch.setattr(bridge_main, "build_patient_bundle", _mock_bundle)
+        response = bridge_client.get("/mcp/stream/debate_discharge")
+        assert "event: consensus" in response.text
+
+    def test_stream_debate_has_confidence(self, bridge_client: TestClient, monkeypatch, golden_patient_bundle) -> None:
+        async def _mock_bundle(_): return golden_patient_bundle
+        monkeypatch.setattr(bridge_main, "build_patient_bundle", _mock_bundle)
+        response = bridge_client.get("/mcp/stream/debate_discharge")
+        assert "event: confidence" in response.text
+
+    def test_stream_debate_has_result(self, bridge_client: TestClient, monkeypatch, golden_patient_bundle) -> None:
+        async def _mock_bundle(_): return golden_patient_bundle
+        monkeypatch.setattr(bridge_main, "build_patient_bundle", _mock_bundle)
+        response = bridge_client.get("/mcp/stream/debate_discharge")
+        assert "event: result" in response.text
+
 
 # ── Fix 4: SMART-on-FHIR OAuth scope validation ───────────────────────────────
 

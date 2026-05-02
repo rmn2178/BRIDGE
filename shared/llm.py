@@ -10,7 +10,7 @@ from typing import Any, Callable, Awaitable, Literal, Optional, TypeVar
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-from shared.models import CarePlanOutput, GapAuditOutput, PCPHandoff, RiskCard
+from shared.models import CarePlanOutput, GapAuditOutput, PCPHandoff, RiskCard, DebateResult, ConsensusPlan
 from sentinel.tools.fhir_snapshot import FHIRBundle
 
 _logger = structlog.get_logger("bridge.llm")
@@ -324,3 +324,13 @@ class LLMClient:
             f"Priority: immediate follow-up and medication monitoring."
         )
         return await self._safe(_call(), lambda: fallback, "generate_risk_narrative")
+
+    async def run_debate(
+        self,
+        risk_card: RiskCard,
+        bundle: object,
+        model: str = _DEFAULT_MODEL,
+    ) -> DebateResult:
+        """Convenience wrapper — delegates to debate_ai orchestrator."""
+        from bridge_agent.tools.debate_ai import run_clinical_debate
+        return await run_clinical_debate(risk_card, bundle, self)

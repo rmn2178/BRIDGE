@@ -22,6 +22,9 @@ from bridge_agent.tools import care_plan, gap_audit, pcp_handoff
 from bridge_agent.tools.care_plan_ai import generate_care_plan_ai
 from bridge_agent.tools.handoff_ai import draft_pcp_handoff_ai
 from bridge_agent.tools.gap_ai import audit_documentation_gaps_ai
+from bridge_agent.tools.debate_ai import run_clinical_debate
+from explainability.confidence_scorer import score_confidence
+from explainability.reason_trace import build_trace
 from common.logging import configure_logging, correlation_middleware
 from sentinel.tools.fhir_snapshot import configure_fhir_client, build_patient_bundle
 from shared.cache import TTLCache, RedisCache, create_redis_client
@@ -45,6 +48,15 @@ _TOOLS = [
     {
         "name": "audit_documentation_gaps",
         "description": "Audit discharge documentation gaps for CMS compliance.",
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "debate_discharge",
+        "description": (
+            "Run multi-agent clinical debate on discharge decision. Three specialist agents "
+            "(medication_safety, sdoh, continuity) review the patient in parallel and vote "
+            "on discharge readiness with full explainability."
+        ),
         "input_schema": {"type": "object", "properties": {}, "required": []},
     },
 ]
@@ -174,6 +186,7 @@ async def agent_card() -> dict:
             "fhir_r4", "a2a_orchestration", "care_plan_generation",
             "cms_gap_audit", "pcp_handoff", "sse_streaming", "audit_trail",
             "genai_care_plans", "genai_handoffs", "ai_gap_prioritization",
+            "multi_agent_debate", "clinical_explainability", "confidence_scoring",
         ],
         "fhir_resources": [
             "Patient", "Condition", "MedicationRequest", "Observation",
@@ -241,8 +254,27 @@ async def call_tool(request: Request, call: MCPCall) -> dict:
     llm = getattr(request.app.state, "llm_client", None)
 
     if tool_name == "generate_care_plan":
+        bundle = await build_patient_bundle(sharp)
         plan = await generate_care_plan_ai(risk_card, llm)
-        return _rpc_result(plan.model_dump_json(), rpc_id)
+        debate = await run_clinical_debate(risk_card, bundle, llm)
+        approve_ratio = debate.approve_count / debate.vote_count if debate.vote_count else 1.0
+        confidence = score_confidence(risk_card, approve_ratio)
+        trace = build_trace(
+            patient_id=sharp.patient_id,
+            tool_called="generate_care_plan",
+            risk_card=risk_card,
+            reasoning_path=["sentinel_a2a", "care_plan_ai", "debate", "synthesis"],
+            fallback_used=(llm is None),
+            debate_result=debate,
+            confidence=confidence,
+        )
+        result = {
+            "care_plan": json.loads(plan.model_dump_json()),
+            "debate": json.loads(debate.model_dump_json()),
+            "confidence": json.loads(confidence.model_dump_json()),
+            "reason_trace": json.loads(trace.model_dump_json()),
+        }
+        return _rpc_result(json.dumps(result), rpc_id)
 
     if tool_name == "draft_pcp_handoff":
         bundle = await build_patient_bundle(sharp)
@@ -253,6 +285,27 @@ async def call_tool(request: Request, call: MCPCall) -> dict:
         bundle = await build_patient_bundle(sharp)
         audit = await audit_documentation_gaps_ai(risk_card, bundle, llm)
         return _rpc_result(audit.model_dump_json(), rpc_id)
+
+    if tool_name == "debate_discharge":
+        bundle = await build_patient_bundle(sharp)
+        debate = await run_clinical_debate(risk_card, bundle, llm)
+        approve_ratio = debate.approve_count / debate.vote_count if debate.vote_count else 1.0
+        confidence = score_confidence(risk_card, approve_ratio)
+        trace = build_trace(
+            patient_id=sharp.patient_id,
+            tool_called="debate_discharge",
+            risk_card=risk_card,
+            reasoning_path=["sentinel_a2a", "debate_pharmacy", "debate_sdoh", "debate_continuity", "synthesis"],
+            fallback_used=(llm is None),
+            debate_result=debate,
+            confidence=confidence,
+        )
+        result = {
+            "debate": json.loads(debate.model_dump_json()),
+            "confidence": json.loads(confidence.model_dump_json()),
+            "reason_trace": json.loads(trace.model_dump_json()),
+        }
+        return _rpc_result(json.dumps(result), rpc_id)
 
     if rpc_id is not None:
         return JSONResponse(
@@ -293,7 +346,7 @@ async def stream_tool(tool_name: str, request: Request) -> StreamingResponse:
             "lace_score": risk_card.lace_plus_score,
         }))
 
-        if tool_name in ("draft_pcp_handoff", "audit_documentation_gaps"):
+        if tool_name in ("draft_pcp_handoff", "audit_documentation_gaps", "debate_discharge"):
             yield _sse("progress", json.dumps({"step": "fhir_fetch", "status": "started"}))
             bundle = await build_patient_bundle(sharp)
             yield _sse("progress", json.dumps({"step": "fhir_fetch", "status": "complete"}))
@@ -312,6 +365,64 @@ async def stream_tool(tool_name: str, request: Request) -> StreamingResponse:
         elif tool_name == "audit_documentation_gaps" and bundle:
             result = await audit_documentation_gaps_ai(risk_card, bundle, llm)
             yield _sse("result", result.model_dump_json())
+        elif tool_name == "debate_discharge" and bundle:
+            from agents import medication_safety_agent, sdoh_agent, continuity_agent
+
+            yield _sse("progress", json.dumps({"step": "agent_dispatch", "status": "started",
+                                                "agents": ["medication_safety", "sdoh", "continuity"]}))
+
+            # Run agents in parallel, emit each vote as it arrives
+            agent_modules = [
+                ("medication_safety", medication_safety_agent),
+                ("sdoh", sdoh_agent),
+                ("continuity", continuity_agent),
+            ]
+            tasks = {
+                name: asyncio.create_task(mod.review_discharge(risk_card, bundle, llm))
+                for name, mod in agent_modules
+            }
+            votes = []
+            for name, task in tasks.items():
+                vote = await task
+                votes.append(vote)
+                emoji = "✅" if vote.approval else "⚠️"
+                yield _sse("agent_vote", json.dumps({
+                    "agent": vote.agent_name,
+                    "approval": vote.approval,
+                    "confidence": vote.confidence,
+                    "primary_concern": vote.primary_concern,
+                    "blocking_factors": vote.blocking_factors,
+                    "display": f"{emoji} {vote.agent_name}: {vote.primary_concern}",
+                }))
+
+            yield _sse("progress", json.dumps({"step": "consensus_calculation", "status": "started"}))
+
+            from bridge_agent.tools.debate_ai import _deterministic_consensus, _llm_arbitrate
+            baseline = _deterministic_consensus(votes, risk_card.patient_id)
+            is_split = 0 < baseline.block_count < baseline.vote_count
+            if is_split and llm is not None:
+                debate_result = await _llm_arbitrate(votes, risk_card, llm, baseline)
+            else:
+                debate_result = baseline
+
+            yield _sse("consensus", json.dumps({
+                "consensus": debate_result.consensus,
+                "confidence": debate_result.confidence,
+                "approve_count": debate_result.approve_count,
+                "block_count": debate_result.block_count,
+                "vote_count": debate_result.vote_count,
+                "arbitration": debate_result.arbitration,
+            }))
+
+            approve_ratio = debate_result.approve_count / debate_result.vote_count if debate_result.vote_count else 1.0
+            confidence = score_confidence(risk_card, approve_ratio)
+            yield _sse("confidence", json.dumps({
+                "score": confidence.score,
+                "level": confidence.level,
+                "factors": [f.model_dump() for f in confidence.key_factors],
+            }))
+
+            yield _sse("result", debate_result.model_dump_json())
         else:
             yield _sse("error", json.dumps({"detail": f"Unknown tool: {tool_name}"}))
             return

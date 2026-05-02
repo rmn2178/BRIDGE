@@ -1,8 +1,0 @@
-site_name: BRIDGE
-site_description: BRIDGE API documentation
-theme:
-  name: mkdocs
-nav:
-  - Home: index.md
-  - Security: security.md
-  - Performance: performance.md

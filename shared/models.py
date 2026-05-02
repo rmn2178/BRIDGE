@@ -175,3 +175,75 @@ class GapAuditOutput(BaseModel):
     patient_id: str
     overall_status: Literal["PASS", "ACTION_REQUIRED"]
     items: List[GapAuditItem]
+
+
+# ── Debate Engine Models ──────────────────────────────────────────────────────
+
+class AgentVote(BaseModel):
+    """Vote cast by a specialist agent during clinical debate."""
+
+    agent_name: str
+    approval: bool
+    confidence: float
+    primary_concern: str
+    detailed_reasoning: str
+    suggested_actions: List[str]
+    blocking_factors: List[str]
+    fhir_evidence: List[str]
+
+
+class ConsensusPlan(BaseModel):
+    """Merged action plan synthesised from all agent votes."""
+
+    mandatory_conditions: List[str]
+    recommended_actions: List[str]
+    monitoring_requirements: List[str]
+    discharge_timeline: str
+
+
+class DebateResult(BaseModel):
+    """Full output of a multi-agent clinical debate."""
+
+    patient_id: str
+    consensus: Literal["APPROVE", "APPROVE_WITH_CONDITIONS", "OBJECT_WITH_CONCERNS", "BLOCK"]
+    confidence: float
+    vote_count: int
+    approve_count: int
+    block_count: int
+    agent_votes: List[AgentVote]
+    dissenting_votes: List[AgentVote]
+    synthesis_plan: ConsensusPlan
+    arbitration: str
+
+
+# ── Explainability Models ─────────────────────────────────────────────────────
+
+class ConfidenceFactor(BaseModel):
+    """Single factor contributing to a confidence score."""
+
+    factor: str
+    weight: float
+    certainty: Literal["Certain", "High", "Moderate", "Low"]
+
+
+class ConfidenceExplanation(BaseModel):
+    """Human-readable breakdown of a confidence score."""
+
+    score: float
+    level: Literal["VERY_HIGH", "HIGH", "MODERATE", "LOW"]
+    key_factors: List[ConfidenceFactor]
+    limitations: List[str]
+
+
+class ReasonTrace(BaseModel):
+    """Full decision chain for a single MCP tool call."""
+
+    timestamp: str
+    patient_id: str
+    tool_called: str
+    lace_plus_score: int
+    risk_level: str
+    reasoning_path: List[str]
+    fallback_used: bool
+    debate_result: Optional[DebateResult] = None
+    confidence: Optional[ConfidenceExplanation] = None

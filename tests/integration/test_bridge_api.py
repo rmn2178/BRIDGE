@@ -17,14 +17,14 @@ class TestBridgeToolsList:
         response = bridge_client.get("/mcp/tools")
         assert response.status_code == 200
 
-    def test_tools_list_has_3_tools(self, bridge_client: TestClient) -> None:
+    def test_tools_list_has_4_tools(self, bridge_client: TestClient) -> None:
         response = bridge_client.get("/mcp/tools")
-        assert len(response.json().get("tools", [])) == 3
+        assert len(response.json().get("tools", [])) == 4
 
     def test_tool_names_match_spec(self, bridge_client: TestClient) -> None:
         response = bridge_client.get("/mcp/tools")
         tool_names = {tool["name"] for tool in response.json().get("tools", [])}
-        assert tool_names == {"generate_care_plan", "draft_pcp_handoff", "audit_documentation_gaps"}
+        assert tool_names == {"generate_care_plan", "draft_pcp_handoff", "audit_documentation_gaps", "debate_discharge"}
 
 
 class TestBridgeCarePlan:
@@ -56,7 +56,8 @@ class TestBridgeCarePlan:
         monkeypatch.setattr(bridge_main, "build_patient_bundle", _mock_bundle)
         response = bridge_client.post("/mcp/call", json={"name": "generate_care_plan"})
         text = response.json()["content"][0]["text"]
-        plan = CarePlanOutput.model_validate_json(text)
+        data = json.loads(text)
+        plan = CarePlanOutput.model_validate(data["care_plan"])
         assert len(plan.actions) >= 1
 
     def test_critical_action_present(self, bridge_client: TestClient, monkeypatch, golden_patient_bundle) -> None:
@@ -66,7 +67,8 @@ class TestBridgeCarePlan:
         monkeypatch.setattr(bridge_main, "build_patient_bundle", _mock_bundle)
         response = bridge_client.post("/mcp/call", json={"name": "generate_care_plan"})
         text = response.json()["content"][0]["text"]
-        plan = CarePlanOutput.model_validate_json(text)
+        data = json.loads(text)
+        plan = CarePlanOutput.model_validate(data["care_plan"])
         assert any(action.priority == "CRITICAL" for action in plan.actions)
 
 

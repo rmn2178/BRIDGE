@@ -87,5 +87,6 @@ class TestFullPipeline:
         response = bridge_client.post("/mcp/call", json={"name": "generate_care_plan"})
         assert response.status_code == 200
         text = response.json()["content"][0]["text"]
-        plan = CarePlanOutput.model_validate_json(text)
+        data = json.loads(text)
+        plan = CarePlanOutput.model_validate(data["care_plan"])
         assert any(action.priority == "CRITICAL" for action in plan.actions)
