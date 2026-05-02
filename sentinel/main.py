@@ -67,7 +67,10 @@ async def call_tool(request: Request, call: MCPCall) -> dict:
         return _mcp_envelope(bundle.model_dump_json())
     if call.name == "calculate_lace_plus":
         lace = calculate_lace_plus(bundle)
-        return _mcp_envelope(json.dumps(lace, default=str))
+        payload = dict(lace)
+        if hasattr(payload.get("risk_level"), "value"):
+            payload["risk_level"] = payload["risk_level"].value
+        return _mcp_envelope(json.dumps(payload, default=str))
     if call.name == "map_risk_drivers":
         risk_card = map_risk_drivers(bundle)
         return _mcp_envelope(risk_card.model_dump_json())

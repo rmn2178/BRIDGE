@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from shared.models import RiskDriver, RiskLevel
@@ -156,9 +156,11 @@ def _patient_age_years(patient: dict) -> int | None:
         birth = datetime.fromisoformat(birth_date)
     except Exception:
         return None
-    today = datetime.utcnow()
+    today = datetime.now(timezone.utc)
     age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
     return age
+
+
 
 
 def _risk_level(score: int) -> RiskLevel:
@@ -198,7 +200,7 @@ def calculate_lace_plus(bundle: FHIRBundle) -> dict:
             fhir_evidence=["Encounter/index-001"] if bundle.encounters else [],
         ),
         RiskDriver(
-            criterion="CHF exacerbation (acute admission)" if acute else "No CHF flare",
+            criterion="Acute CHF exacerbation" if acute else "No CHF flare",
             points=acuity_score,
             fhir_evidence=["Condition/chf-001"] if acute else [],
         ),
@@ -232,7 +234,7 @@ def calculate_lace_plus(bundle: FHIRBundle) -> dict:
 
     return {
         "lace_plus_score": raw_score,
-        "risk_level": _risk_level(raw_score).value,
+        "risk_level": _risk_level(raw_score),
         "primary_drivers": [driver.model_dump() for driver in drivers],
         "raw_score": raw_score,
     }

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 from pydantic import BaseModel
 
@@ -105,7 +105,7 @@ class CarePlanAction(BaseModel):
     """Actionable care plan item derived from risk assessment."""
 
     action: str
-    priority: str
+    priority: Literal["CRITICAL", "HIGH", "ROUTINE"]
     rationale: str
     risk_card_source: str
 
@@ -134,7 +134,7 @@ class GapAuditItem(BaseModel):
     """Single compliance check result for discharge documentation."""
 
     requirement: str
-    status: str
+    status: Literal["PASS", "FAIL"]
     fhir_evidence: Optional[str] = None
     remediation: Optional[str] = None
 
@@ -143,5 +143,5 @@ class GapAuditOutput(BaseModel):
     """Summary of CMS documentation gap audit results."""
 
     patient_id: str
-    overall_status: str
+    overall_status: Literal["PASS", "ACTION_REQUIRED"]
     items: List[GapAuditItem]

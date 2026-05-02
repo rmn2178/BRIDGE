@@ -15,6 +15,14 @@ MARKETPLACE_REGISTRY = os.getenv(
 )
 
 
+def _sentinel_fallback_url() -> str:
+    return os.getenv("SENTINEL_URL", SENTINEL_AGENT_URL)
+
+
+def _marketplace_url_explicit() -> bool:
+    return "MARKETPLACE_URL" in os.environ
+
+
 async def discover_sentinel() -> str:
     """Discover SENTINEL via the marketplace registry with safe fallback."""
 
@@ -29,14 +37,17 @@ async def discover_sentinel() -> str:
             if isinstance(endpoint_url, str) and endpoint_url.strip():
                 return endpoint_url.strip()
     except Exception:
-        return SENTINEL_AGENT_URL
-    return SENTINEL_AGENT_URL
+        return _sentinel_fallback_url()
+    return _sentinel_fallback_url()
 
 
 async def request_risk_assessment(sharp: SHARPContext) -> RiskCard:
     """Request a RiskCard from the SENTINEL MCP endpoint."""
 
-    sentinel_url = await discover_sentinel()
+    if _marketplace_url_explicit():
+        sentinel_url = await discover_sentinel()
+    else:
+        sentinel_url = _sentinel_fallback_url()
     headers = {
         "x-sharp-patient-id": sharp.patient_id,
         "x-sharp-fhir-base-url": sharp.fhir_base_url,

@@ -68,6 +68,11 @@ async def call_tool(request: Request, call: MCPCall) -> dict:
             status_code=503,
             detail=f"A2A handshake with SENTINEL failed: {exc.detail}",
         )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"A2A handshake with SENTINEL failed: {exc}",
+        )
 
     if call.name == "generate_care_plan":
         plan = care_plan.generate_care_plan(risk_card)

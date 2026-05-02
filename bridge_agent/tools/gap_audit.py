@@ -16,7 +16,7 @@ def audit_documentation_gaps(risk_card: RiskCard, bundle: FHIRBundle) -> GapAudi
     has_follow_up = bool(bundle.appointments)
     items.append(
         GapAuditItem(
-            requirement="Follow-up appointment scheduled within 7 days",
+            requirement="follow-up appointment scheduled within 7 days",
             status="PASS" if has_follow_up else "FAIL",
             fhir_evidence="Appointment" if has_follow_up else None,
             remediation=(
